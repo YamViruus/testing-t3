@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schemav
+
+// generator studio-client {
+//   provider = "prisma-client-js"
+// }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+}
+
+model Client {
+  id             String                @id @default(cuid())
+  nom            String
+  prenom         String
+  address        String?
+  phoneNumber    String?
+  credit         Float                 @default(0)
+  Achats         AchatClientComptoir[]
+  PaimentCredits PaiementCredit[]
+}
+
+model Fournisseur {
+  id          String  @id @default(cuid())
+  nom         String
+  prenom      String
+  address     String?
+  phoneNumber String?
+  solde       Float   @default(0)
+  // BonCommande BonCommande[]
+}
+
+model Produit {
+  code        String      @id @default(cuid())
+  designation String
+  type        typeProduit @relation(fields: [typeID], references: [id])
+  typeID      Int
+
+  bonCommands           BonCommandeOnProduit[]
+  SortieStocks          SortieStock[]
+  AchatClientOnProduits AchatClientOnProduit[]
+  EntreeStockOnProduit  EntreeStockOnProduit[]
+  EtatStock             EtatStock[]
+}
+
+model typeProduit {
+  id          Int       @id @default(autoincrement())
+  designation String    @unique
+  produits    Produit[]
+}
+
+model BonCommande {
+  id           Int                    @id @default(autoincrement())
+  date         DateTime               @default(now())
+  produits     BonCommandeOnProduit[]
+  facture      Facture[]
+  bonLivraison BonLivraison[]
+  // fournisseur   Fournisseur            @relation(fields: [fournisseurId], references: [id])
+  // fournisseurId String
+}
+
+model BonCommandeOnProduit {
+  bonCommandeID BonCommande @relation(fields: [bonCommande], references: [id])
+  bonCommande   Int
+  produit       Produit     @relation(fields: [codeProduit], references: [code])
+  codeProduit   String
+  qte           Int         @default(0)
+
+  @@id([bonCommande, codeProduit])
+}
+
+model Facture {
+  num           Int         @id @default(autoincrement())
+  date          DateTime    @default(now())
+  bonCommande   BonCommande @relation(fields: [bonCommandeID], references: [id])
+  bonCommandeID Int
+  reglements    Reglement[]
+  paye          Boolean     @default(false)
+  totalPaye     Float       @default(0)
+}
+
+model BonLivraison {
+  num           Int         @id @default(autoincrement())
+  date          DateTime    @default(now())
+  bonCommandeID BonCommande @relation(fields: [bonCommande], references: [id])
+  bonCommande   Int
+  totalPaye     Float       @default(0)
+}
+
+model Reglement {
+  num       Int     @id @default(autoincrement())
+  factureID Facture @relation(fields: [facture], references: [num])
+  facture   Int
+}
+
+model EntreeStock {
+  code     String                 @id @default(uuid())
+  date     DateTime               @default(now())
+  totalHT  Float                  @default(0)
+  totalTTC Float                  @default(0)
+  produits EntreeStockOnProduit[]
+}
+
+model EntreeStockOnProduit {
+  produitID     Produit     @relation(fields: [produit], references: [code])
+  EntreeStockID EntreeStock @relation(fields: [EntreeStock], references: [code])
+  EntreeStock   String
+  produit       String
+  prix_ht       Float
+  prix_vente    Float
+  qte           Int
+
+  @@id([EntreeStock, produit])
+}
+
+model SortieStock {
+  num       String  @id @default(uuid())
+  motif     String
+  produitID Produit @relation(fields: [produit], references: [code])
+  produit   String
+  qte       Float
+}
+
+model EtatStock {
+  code      String  @id
+  produitID Produit @relation(fields: [code], references: [code])
+}
+
+model AchatClientComptoir {
+  num      String                 @id @default(uuid())
+  date     DateTime               @default(now())
+  clientID Client                 @relation(fields: [client], references: [id])
+  client   String
+  produits AchatClientOnProduit[]
+}
+
+model AchatClientOnProduit {
+  num_achatID AchatClientComptoir @relation(fields: [num_achat], references: [num])
+  num_achat   String
+  produitID   Produit             @relation(fields: [produit], references: [code])
+  produit     String
+  qte         Int                 @default(0)
+
+  @@id([produit, num_achat])
+}
+
+model PaiementCredit {
+  id       Int      @id @default(autoincrement())
+  date     DateTime @default(now())
+  clientID Client   @relation(fields: [client], references: [id])
+  client   String
+}
+
+// add etat_stock total_achat et total_vente de chaque produit : DONE
+// add entree_stock  : DONE
+// 0,1 1 1 with bon_commande and facture and bon_livraison 
